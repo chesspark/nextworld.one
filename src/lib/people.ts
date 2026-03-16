@@ -1,4 +1,4 @@
-import { supabaseAdmin } from "./supabase";
+import { getSupabaseAdmin } from "./supabase";
 
 export interface Person {
   id: string;
@@ -11,7 +11,8 @@ export interface Person {
 }
 
 export async function getPeople(): Promise<Person[]> {
-  const { data, error } = await supabaseAdmin
+  const db = getSupabaseAdmin();
+  const { data, error } = await db
     .from("people")
     .select("*")
     .order("created_at", { ascending: true });
@@ -21,7 +22,8 @@ export async function getPeople(): Promise<Person[]> {
 }
 
 export async function getPeopleByCountry(code: string): Promise<Person[]> {
-  const { data, error } = await supabaseAdmin
+  const db = getSupabaseAdmin();
+  const { data, error } = await db
     .from("people")
     .select("*")
     .eq("country_code", code.toUpperCase())
@@ -34,7 +36,8 @@ export async function getPeopleByCountry(code: string): Promise<Person[]> {
 export async function addPerson(
   data: Omit<Person, "id" | "created_at">
 ): Promise<Person> {
-  const { data: existing } = await supabaseAdmin
+  const db = getSupabaseAdmin();
+  const { data: existing } = await db
     .from("people")
     .select("id")
     .eq("country_code", data.country_code.toUpperCase());
@@ -43,7 +46,7 @@ export async function addPerson(
     throw new Error("Maximum 5 people per country");
   }
 
-  const { data: person, error } = await supabaseAdmin
+  const { data: person, error } = await db
     .from("people")
     .insert({
       ...data,
@@ -60,12 +63,13 @@ export async function updatePerson(
   id: string,
   updates: Partial<Omit<Person, "id" | "created_at">>
 ): Promise<Person> {
+  const db = getSupabaseAdmin();
   const cleanUpdates = { ...updates, updated_at: new Date().toISOString() };
   if (cleanUpdates.country_code) {
     cleanUpdates.country_code = cleanUpdates.country_code.toUpperCase();
   }
 
-  const { data: person, error } = await supabaseAdmin
+  const { data: person, error } = await db
     .from("people")
     .update(cleanUpdates)
     .eq("id", id)
@@ -77,7 +81,8 @@ export async function updatePerson(
 }
 
 export async function deletePerson(id: string): Promise<void> {
-  const { error } = await supabaseAdmin
+  const db = getSupabaseAdmin();
+  const { error } = await db
     .from("people")
     .delete()
     .eq("id", id);
