@@ -1,13 +1,15 @@
 export default function Marquee() {
   const words = [
-    "INNOVATION",
-    "DESIGN",
-    "CULTURE",
+    "EDUCATION",
+    "RESEARCH",
+    "FOOD",
+    "ENTERPRISE",
+    "HEALTH",
+    "ENERGY",
     "TECHNOLOGY",
+    "CULTURE",
+    "GOVERNANCE",
     "FUTURE",
-    "MOVEMENT",
-    "CRAFT",
-    "VISION",
   ];
 
   return (

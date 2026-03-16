@@ -1,20 +1,16 @@
-import Hero from "@/components/Hero";
+import Globe from "@/components/Globe";
 import Marquee from "@/components/Marquee";
-import FeaturedSection from "@/components/FeaturedSection";
-import SplitShowcase from "@/components/SplitShowcase";
-import CultureSection from "@/components/CultureSection";
-import StatsBar from "@/components/StatsBar";
+import MissionSection from "@/components/MissionSection";
+import ThemesSection from "@/components/ThemesSection";
 import CTASection from "@/components/CTASection";
 
 export default function Home() {
   return (
     <>
-      <Hero />
+      <Globe />
       <Marquee />
-      <FeaturedSection />
-      <SplitShowcase />
-      <StatsBar />
-      <CultureSection />
+      <MissionSection />
+      <ThemesSection />
       <CTASection />
     </>
   );
