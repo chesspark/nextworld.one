@@ -22,14 +22,52 @@ interface GeoFeature {
 const countryCodeSet = new Set(countries.map((c) => c.code));
 
 const numericToIso: Record<string, string> = {
-  "250": "FR", "840": "US", "826": "GB", "392": "JP", "076": "BR",
-  "276": "DE", "380": "IT", "156": "CN", "356": "IN", "036": "AU",
-  "643": "RU", "124": "CA", "484": "MX", "818": "EG", "710": "ZA",
-  "410": "KR", "032": "AR", "724": "ES", "682": "SA", "792": "TR",
-  "566": "NG", "404": "KE", "764": "TH", "752": "SE", "756": "CH",
-  "376": "IL", "784": "AE", "702": "SG", "504": "MA", "170": "CO",
-  "604": "PE", "300": "GR", "620": "PT", "616": "PL", "578": "NO",
-  "554": "NZ", "152": "CL", "360": "ID", "608": "PH", "704": "VN",
+  // Europe
+  "250": "FR", "826": "GB", "276": "DE", "380": "IT", "724": "ES",
+  "620": "PT", "528": "NL", "056": "BE", "040": "AT", "756": "CH",
+  "752": "SE", "578": "NO", "208": "DK", "246": "FI", "352": "IS",
+  "372": "IE", "616": "PL", "203": "CZ", "703": "SK", "348": "HU",
+  "642": "RO", "100": "BG", "191": "HR", "705": "SI", "688": "RS",
+  "070": "BA", "499": "ME", "807": "MK", "008": "AL", "300": "GR",
+  "196": "CY", "470": "MT", "442": "LU", "233": "EE", "428": "LV",
+  "440": "LT", "804": "UA", "498": "MD", "112": "BY", "268": "GE",
+  "051": "AM", "031": "AZ",
+  // North America
+  "840": "US", "124": "CA", "484": "MX", "320": "GT", "084": "BZ",
+  "340": "HN", "222": "SV", "558": "NI", "188": "CR", "591": "PA",
+  "192": "CU", "388": "JM", "332": "HT", "214": "DO", "780": "TT",
+  // South America
+  "076": "BR", "032": "AR", "170": "CO", "604": "PE", "152": "CL",
+  "862": "VE", "218": "EC", "068": "BO", "600": "PY", "858": "UY",
+  "328": "GY", "740": "SR",
+  // Asia
+  "156": "CN", "392": "JP", "356": "IN", "410": "KR", "360": "ID",
+  "764": "TH", "704": "VN", "608": "PH", "458": "MY", "702": "SG",
+  "104": "MM", "116": "KH", "418": "LA", "050": "BD", "144": "LK",
+  "524": "NP", "586": "PK", "004": "AF", "860": "UZ", "398": "KZ",
+  "795": "TM", "417": "KG", "762": "TJ", "496": "MN", "408": "KP",
+  "158": "TW", "096": "BN", "626": "TL", "064": "BT", "462": "MV",
+  // Middle East
+  "792": "TR", "682": "SA", "784": "AE", "376": "IL", "364": "IR",
+  "368": "IQ", "400": "JO", "422": "LB", "760": "SY", "887": "YE",
+  "512": "OM", "634": "QA", "048": "BH", "414": "KW", "275": "PS",
+  // Africa
+  "818": "EG", "710": "ZA", "566": "NG", "404": "KE", "504": "MA",
+  "231": "ET", "834": "TZ", "288": "GH", "686": "SN", "384": "CI",
+  "120": "CM", "800": "UG", "646": "RW", "508": "MZ", "450": "MG",
+  "024": "AO", "180": "CD", "178": "CG", "788": "TN", "012": "DZ",
+  "434": "LY", "736": "SD", "728": "SS", "466": "ML", "854": "BF",
+  "562": "NE", "148": "TD", "478": "MR", "270": "GM", "624": "GW",
+  "324": "GN", "694": "SL", "430": "LR", "768": "TG", "204": "BJ",
+  "266": "GA", "226": "GQ", "140": "CF", "108": "BI", "232": "ER",
+  "262": "DJ", "706": "SO", "894": "ZM", "716": "ZW", "072": "BW",
+  "516": "NA", "748": "SZ", "426": "LS", "454": "MW", "480": "MU",
+  "690": "SC", "132": "CV", "678": "ST", "174": "KM",
+  // Oceania
+  "036": "AU", "554": "NZ", "598": "PG", "242": "FJ", "882": "WS",
+  "776": "TO", "548": "VU", "090": "SB",
+  // Russia
+  "643": "RU",
 };
 
 const nameToIso: Record<string, string> = {};
@@ -39,10 +77,37 @@ nameToIso["united kingdom"] = "GB";
 nameToIso["russian federation"] = "RU";
 nameToIso["south korea"] = "KR";
 nameToIso["s. korea"] = "KR";
+nameToIso["rep. of korea"] = "KR";
+nameToIso["korea"] = "KR";
+nameToIso["dem. rep. korea"] = "KP";
 nameToIso["saudi arabia"] = "SA";
 nameToIso["south africa"] = "ZA";
 nameToIso["new zealand"] = "NZ";
 nameToIso["united arab emirates"] = "AE";
+nameToIso["czech rep."] = "CZ";
+nameToIso["czechia"] = "CZ";
+nameToIso["bosnia and herz."] = "BA";
+nameToIso["n. macedonia"] = "MK";
+nameToIso["central african rep."] = "CF";
+nameToIso["dem. rep. congo"] = "CD";
+nameToIso["congo"] = "CG";
+nameToIso["eq. guinea"] = "GQ";
+nameToIso["w. sahara"] = "EH";
+nameToIso["s. sudan"] = "SS";
+nameToIso["côte d'ivoire"] = "CI";
+nameToIso["ivory coast"] = "CI";
+nameToIso["timor-leste"] = "TL";
+nameToIso["e. timor"] = "TL";
+nameToIso["papua new guinea"] = "PG";
+nameToIso["solomon is."] = "SB";
+nameToIso["dominican rep."] = "DO";
+nameToIso["trinidad and tobago"] = "TT";
+nameToIso["são tomé and príncipe"] = "ST";
+nameToIso["guinea-bissau"] = "GW";
+nameToIso["eswatini"] = "SZ";
+nameToIso["swaziland"] = "SZ";
+nameToIso["burma"] = "MM";
+nameToIso["lao pdr"] = "LA";
 
 function getIso(feat: GeoFeature): string | null {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
