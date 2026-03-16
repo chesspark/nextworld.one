@@ -4,20 +4,25 @@ import { getPeople, getPeopleByCountry, addPerson } from "@/lib/people";
 export async function GET(request: NextRequest) {
   const countryCode = request.nextUrl.searchParams.get("country");
 
-  const people = countryCode
-    ? await getPeopleByCountry(countryCode)
-    : await getPeople();
+  try {
+    const people = countryCode
+      ? await getPeopleByCountry(countryCode)
+      : await getPeople();
 
-  return NextResponse.json(people);
+    return NextResponse.json(people);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Error";
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
 }
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { name, title, description, imageUrl, countryCode } = body;
+  const { name, title, description, image_url, country_code } = body;
 
-  if (!name || !title || !countryCode) {
+  if (!name || !title || !country_code) {
     return NextResponse.json(
-      { error: "name, title, and countryCode are required" },
+      { error: "name, title, and country_code are required" },
       { status: 400 }
     );
   }
@@ -27,8 +32,8 @@ export async function POST(request: NextRequest) {
       name,
       title,
       description: description || "",
-      imageUrl: imageUrl || "",
-      countryCode,
+      image_url: image_url || "",
+      country_code,
     });
     return NextResponse.json(person, { status: 201 });
   } catch (e) {

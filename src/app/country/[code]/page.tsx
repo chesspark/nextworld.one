@@ -38,7 +38,6 @@ export default async function CountryPage({
 
   return (
     <div className="min-h-screen bg-black">
-      {/* Hero with landmark */}
       <div className="relative h-[60vh] min-h-[400px] overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center"

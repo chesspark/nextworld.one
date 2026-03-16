@@ -3,15 +3,7 @@
 import { motion } from "framer-motion";
 import { User } from "lucide-react";
 import type { Country } from "@/data/countries";
-
-interface Person {
-  id: string;
-  name: string;
-  title: string;
-  description: string;
-  imageUrl: string;
-  countryCode: string;
-}
+import type { Person } from "@/lib/people";
 
 export default function CountryContent({
   country,
@@ -63,11 +55,10 @@ export default function CountryContent({
 function PersonCard({ person, index }: { person: Person; index: number }) {
   return (
     <div className="group relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl overflow-hidden hover:border-white/20 transition-all duration-300 hover:-translate-y-1">
-      {/* Avatar area */}
       <div className="aspect-[3/4] relative bg-gradient-to-br from-neutral-800 to-neutral-900 flex items-center justify-center overflow-hidden">
-        {person.imageUrl ? (
+        {person.image_url ? (
           <img
-            src={person.imageUrl}
+            src={person.image_url}
             alt={person.name}
             className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
@@ -76,13 +67,10 @@ function PersonCard({ person, index }: { person: Person; index: number }) {
             <User size={48} className="text-white/20" />
           </div>
         )}
-        {/* Number badge */}
         <div className="absolute top-3 left-3 w-7 h-7 bg-white text-black text-xs font-bold rounded-full flex items-center justify-center">
           {index + 1}
         </div>
       </div>
-
-      {/* Info */}
       <div className="p-4">
         <h3 className="text-white font-bold text-sm tracking-tight">
           {person.name}

@@ -20,8 +20,8 @@ interface Person {
   name: string;
   title: string;
   description: string;
-  imageUrl: string;
-  countryCode: string;
+  image_url: string;
+  country_code: string;
 }
 
 export default function AdminPage() {
@@ -38,7 +38,7 @@ export default function AdminPage() {
     const params = selectedCountry ? `?country=${selectedCountry}` : "";
     const res = await fetch(`/api/people${params}`);
     const data = await res.json();
-    setPeople(data);
+    setPeople(Array.isArray(data) ? data : []);
     setLoading(false);
   }, [selectedCountry]);
 
@@ -50,7 +50,7 @@ export default function AdminPage() {
     (p) =>
       p.name.toLowerCase().includes(search.toLowerCase()) ||
       p.title.toLowerCase().includes(search.toLowerCase()) ||
-      p.countryCode.toLowerCase().includes(search.toLowerCase())
+      p.country_code.toLowerCase().includes(search.toLowerCase())
   );
 
   const handleDelete = async (id: string) => {
@@ -206,7 +206,7 @@ export default function AdminPage() {
               <tbody>
                 {filteredPeople.map((person) => {
                   const country = countries.find(
-                    (c) => c.code === person.countryCode
+                    (c) => c.code === person.country_code
                   );
                   return (
                     <tr
@@ -216,9 +216,9 @@ export default function AdminPage() {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-full bg-neutral-100 flex items-center justify-center shrink-0 overflow-hidden">
-                            {person.imageUrl ? (
+                            {person.image_url ? (
                               <img
-                                src={person.imageUrl}
+                                src={person.image_url}
                                 alt=""
                                 className="w-full h-full object-cover"
                               />
@@ -234,7 +234,7 @@ export default function AdminPage() {
                       </td>
                       <td className="px-6 py-4">
                         <span className="bg-neutral-100 text-neutral-600 text-xs font-bold px-2.5 py-1 rounded-full">
-                          {country?.name || person.countryCode}
+                          {country?.name || person.country_code}
                         </span>
                       </td>
                       <td className="px-6 py-4">
@@ -281,8 +281,8 @@ function PersonForm({
     name: person?.name || "",
     title: person?.title || "",
     description: person?.description || "",
-    imageUrl: person?.imageUrl || "",
-    countryCode: person?.countryCode || "",
+    image_url: person?.image_url || "",
+    country_code: person?.country_code || "",
   });
 
   return (
@@ -320,8 +320,8 @@ function PersonForm({
             Country *
           </label>
           <select
-            value={form.countryCode}
-            onChange={(e) => setForm({ ...form, countryCode: e.target.value })}
+            value={form.country_code}
+            onChange={(e) => setForm({ ...form, country_code: e.target.value })}
             className="w-full border border-neutral-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-neutral-300"
           >
             <option value="">Select country</option>
@@ -338,8 +338,8 @@ function PersonForm({
           </label>
           <input
             type="url"
-            value={form.imageUrl}
-            onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
+            value={form.image_url}
+            onChange={(e) => setForm({ ...form, image_url: e.target.value })}
             className="w-full border border-neutral-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-neutral-300"
             placeholder="https://..."
           />

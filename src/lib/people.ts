@@ -1,69 +1,86 @@
-import { readFile, writeFile } from "fs/promises";
-import path from "path";
+import { supabaseAdmin } from "./supabase";
 
 export interface Person {
   id: string;
-  countryCode: string;
+  country_code: string;
   name: string;
   title: string;
   description: string;
-  imageUrl: string;
+  image_url: string;
+  created_at?: string;
 }
 
-const DATA_PATH = path.join(process.cwd(), "src", "data", "people.json");
-
 export async function getPeople(): Promise<Person[]> {
-  const raw = await readFile(DATA_PATH, "utf-8");
-  return JSON.parse(raw) as Person[];
+  const { data, error } = await supabaseAdmin
+    .from("people")
+    .select("*")
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+  return data || [];
 }
 
 export async function getPeopleByCountry(code: string): Promise<Person[]> {
-  const all = await getPeople();
-  return all.filter((p) => p.countryCode === code.toUpperCase());
+  const { data, error } = await supabaseAdmin
+    .from("people")
+    .select("*")
+    .eq("country_code", code.toUpperCase())
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+  return data || [];
 }
 
 export async function addPerson(
-  data: Omit<Person, "id">
+  data: Omit<Person, "id" | "created_at">
 ): Promise<Person> {
-  const all = await getPeople();
-  const countryCount = all.filter(
-    (p) => p.countryCode === data.countryCode.toUpperCase()
-  ).length;
+  const { data: existing } = await supabaseAdmin
+    .from("people")
+    .select("id")
+    .eq("country_code", data.country_code.toUpperCase());
 
-  if (countryCount >= 5) {
+  if (existing && existing.length >= 5) {
     throw new Error("Maximum 5 people per country");
   }
 
-  const person: Person = {
-    ...data,
-    id: `${data.countryCode.toLowerCase()}_${Date.now()}`,
-    countryCode: data.countryCode.toUpperCase(),
-  };
+  const { data: person, error } = await supabaseAdmin
+    .from("people")
+    .insert({
+      ...data,
+      country_code: data.country_code.toUpperCase(),
+    })
+    .select()
+    .single();
 
-  all.push(person);
-  await writeFile(DATA_PATH, JSON.stringify(all, null, 2), "utf-8");
+  if (error) throw error;
   return person;
 }
 
 export async function updatePerson(
   id: string,
-  data: Partial<Omit<Person, "id">>
+  updates: Partial<Omit<Person, "id" | "created_at">>
 ): Promise<Person> {
-  const all = await getPeople();
-  const idx = all.findIndex((p) => p.id === id);
-  if (idx === -1) throw new Error("Person not found");
-
-  all[idx] = { ...all[idx], ...data };
-  if (data.countryCode) {
-    all[idx].countryCode = data.countryCode.toUpperCase();
+  const cleanUpdates = { ...updates, updated_at: new Date().toISOString() };
+  if (cleanUpdates.country_code) {
+    cleanUpdates.country_code = cleanUpdates.country_code.toUpperCase();
   }
-  await writeFile(DATA_PATH, JSON.stringify(all, null, 2), "utf-8");
-  return all[idx];
+
+  const { data: person, error } = await supabaseAdmin
+    .from("people")
+    .update(cleanUpdates)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return person;
 }
 
 export async function deletePerson(id: string): Promise<void> {
-  const all = await getPeople();
-  const filtered = all.filter((p) => p.id !== id);
-  if (filtered.length === all.length) throw new Error("Person not found");
-  await writeFile(DATA_PATH, JSON.stringify(filtered, null, 2), "utf-8");
+  const { error } = await supabaseAdmin
+    .from("people")
+    .delete()
+    .eq("id", id);
+
+  if (error) throw error;
 }
