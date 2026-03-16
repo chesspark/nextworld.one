@@ -2,10 +2,15 @@
 
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { geoOrthographic, geoPath, geoGraticule, type GeoPermissibleObjects } from "d3-geo";
+import {
+  geoOrthographic,
+  geoPath,
+  geoGraticule,
+  geoCircle,
+  type GeoPermissibleObjects,
+} from "d3-geo";
 import { feature } from "topojson-client";
 import { countries } from "@/data/countries";
-import { motion } from "framer-motion";
 
 interface GeoFeature {
   type: string;
@@ -40,16 +45,27 @@ nameToIso["new zealand"] = "NZ";
 nameToIso["united arab emirates"] = "AE";
 
 function getIso(feat: GeoFeature): string | null {
-  if (feat.id && numericToIso[feat.id]) return numericToIso[feat.id];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if (feat.id && numericToIso[feat.id as any]) return numericToIso[feat.id as any];
   const name = feat.properties?.name || "";
   return nameToIso[name.toLowerCase()] || null;
+}
+
+function getSunPosition(): [number, number] {
+  const now = new Date();
+  const utcHours = now.getUTCHours() + now.getUTCMinutes() / 60;
+  const sunLng = -(utcHours / 24) * 360 + 180;
+  const dayOfYear = Math.floor(
+    (now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86400000
+  );
+  const sunLat = 23.44 * Math.sin(((2 * Math.PI) / 365) * (dayOfYear - 81));
+  return [sunLng, sunLat];
 }
 
 const TOPO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
 export default function Globe() {
   const router = useRouter();
-  const svgRef = useRef<SVGSVGElement>(null);
   const [feats, setFeats] = useState<GeoFeature[]>([]);
   const [hovered, setHovered] = useState<string | null>(null);
   const [rotation, setRotation] = useState<[number, number]>([-10, -25]);
@@ -58,6 +74,8 @@ export default function Globe() {
   const [size, setSize] = useState({ w: 800, h: 800 });
   const [loaded, setLoaded] = useState(false);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; code: string } | null>(null);
+  const [sunPos, setSunPos] = useState<[number, number]>(getSunPosition());
+  const animRef = useRef<number>(0);
 
   useEffect(() => {
     fetch(TOPO_URL)
@@ -74,25 +92,31 @@ export default function Globe() {
   }, []);
 
   useEffect(() => {
-    const update = () => {
-      const s = Math.min(window.innerWidth, window.innerHeight);
+    const update = () =>
       setSize({ w: window.innerWidth, h: window.innerHeight });
-    };
     update();
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
   }, []);
 
-  // Auto-rotate when not dragging
+  // Update sun position every 60s
+  useEffect(() => {
+    const id = setInterval(() => setSunPos(getSunPosition()), 60000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Auto-rotate
   useEffect(() => {
     if (dragging || !loaded) return;
-    const id = setInterval(() => {
-      setRotation(([lon, lat]) => [lon - 0.15, lat]);
-    }, 30);
-    return () => clearInterval(id);
+    const tick = () => {
+      setRotation(([lon, lat]) => [lon - 0.08, lat]);
+      animRef.current = requestAnimationFrame(tick);
+    };
+    animRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(animRef.current);
   }, [dragging, loaded]);
 
-  const radius = Math.min(size.w, size.h) * 0.42;
+  const radius = Math.min(size.w, size.h) * 0.4;
 
   const projection = useMemo(
     () =>
@@ -105,7 +129,14 @@ export default function Globe() {
   );
 
   const pathGen = useMemo(() => geoPath(projection), [projection]);
-  const graticule = useMemo(() => geoGraticule()(), []);
+  const graticule = useMemo(() => geoGraticule().step([15, 15])(), []);
+
+  const nightCircle = useMemo(() => {
+    const circle = geoCircle()
+      .center([sunPos[0] + 180, -sunPos[1]])
+      .radius(90)();
+    return pathGen(circle);
+  }, [sunPos, pathGen]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     setDragging(true);
@@ -169,19 +200,21 @@ export default function Globe() {
 
   if (!loaded) {
     return (
-      <div className="h-screen bg-black flex items-center justify-center">
+      <div className="h-screen bg-[#0a1628] flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-2 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-white/40 text-sm tracking-widest uppercase">Loading Globe</p>
+          <p className="text-white/30 text-sm tracking-widest uppercase">Loading</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="relative h-screen bg-black overflow-hidden select-none">
+    <div className="relative h-screen overflow-hidden select-none" style={{ background: "radial-gradient(ellipse at 50% 45%, #0d1f3c 0%, #060e1a 50%, #020408 100%)" }}>
+      {/* Subtle stars */}
+      <div className="absolute inset-0 opacity-40" style={{ backgroundImage: "radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,0.3), transparent), radial-gradient(1px 1px at 70% 20%, rgba(255,255,255,0.2), transparent), radial-gradient(1px 1px at 40% 70%, rgba(255,255,255,0.15), transparent), radial-gradient(1px 1px at 80% 60%, rgba(255,255,255,0.25), transparent), radial-gradient(1px 1px at 10% 80%, rgba(255,255,255,0.1), transparent), radial-gradient(1px 1px at 60% 50%, rgba(255,255,255,0.2), transparent)" }} />
+
       <svg
-        ref={svgRef}
         width={size.w}
         height={size.h}
         className="absolute inset-0"
@@ -194,34 +227,52 @@ export default function Globe() {
         onTouchEnd={handleTouchEnd}
         style={{ cursor: dragging ? "grabbing" : "grab" }}
       >
-        {/* Globe sphere */}
         <defs>
-          <radialGradient id="globe-gradient" cx="40%" cy="35%">
-            <stop offset="0%" stopColor="#1a1a2e" />
-            <stop offset="100%" stopColor="#0a0a0a" />
+          {/* Ocean gradient */}
+          <radialGradient id="ocean" cx="45%" cy="40%">
+            <stop offset="0%" stopColor="#1a3a5c" />
+            <stop offset="50%" stopColor="#0f2744" />
+            <stop offset="100%" stopColor="#091b33" />
           </radialGradient>
-          <radialGradient id="globe-glow" cx="50%" cy="50%">
-            <stop offset="80%" stopColor="transparent" />
-            <stop offset="100%" stopColor="rgba(255,255,255,0.03)" />
+          {/* Atmosphere glow */}
+          <radialGradient id="atmo" cx="50%" cy="50%">
+            <stop offset="85%" stopColor="transparent" />
+            <stop offset="93%" stopColor="rgba(80,160,255,0.08)" />
+            <stop offset="100%" stopColor="rgba(60,130,220,0.03)" />
           </radialGradient>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
         </defs>
 
-        {/* Globe background */}
+        {/* Atmosphere ring */}
+        <circle
+          cx={size.w / 2}
+          cy={size.h / 2}
+          r={radius + 15}
+          fill="url(#atmo)"
+        />
+
+        {/* Ocean */}
         <circle
           cx={size.w / 2}
           cy={size.h / 2}
           r={radius}
-          fill="url(#globe-gradient)"
-          stroke="rgba(255,255,255,0.08)"
-          strokeWidth={1}
+          fill="url(#ocean)"
+          stroke="rgba(100,180,255,0.1)"
+          strokeWidth={0.5}
         />
 
         {/* Graticule */}
         <path
           d={pathGen(graticule) || ""}
           fill="none"
-          stroke="rgba(255,255,255,0.04)"
-          strokeWidth={0.5}
+          stroke="rgba(255,255,255,0.03)"
+          strokeWidth={0.4}
         />
 
         {/* Countries */}
@@ -238,22 +289,22 @@ export default function Globe() {
               d={d}
               fill={
                 isHovered
-                  ? "rgba(255,255,255,0.4)"
+                  ? "#4a9e6e"
                   : isActive
-                    ? "rgba(255,255,255,0.15)"
-                    : "rgba(255,255,255,0.05)"
+                    ? "#2d6b47"
+                    : "#1e4a35"
               }
               stroke={
                 isHovered
-                  ? "#fff"
+                  ? "rgba(255,255,255,0.6)"
                   : isActive
-                    ? "rgba(255,255,255,0.35)"
-                    : "rgba(255,255,255,0.1)"
+                    ? "rgba(255,255,255,0.2)"
+                    : "rgba(255,255,255,0.08)"
               }
-              strokeWidth={isHovered ? 1.5 : 0.5}
+              strokeWidth={isHovered ? 1.2 : 0.3}
               style={{
                 cursor: isActive ? "pointer" : "grab",
-                transition: "fill 0.2s, stroke 0.2s",
+                transition: "fill 0.15s, stroke 0.15s",
               }}
               onMouseEnter={(e) => {
                 if (isActive && iso) {
@@ -280,14 +331,24 @@ export default function Globe() {
           );
         })}
 
-        {/* Outer glow */}
+        {/* Day/Night shadow overlay */}
+        {nightCircle && (
+          <path
+            d={nightCircle}
+            fill="rgba(0,0,10,0.35)"
+            stroke="none"
+            style={{ pointerEvents: "none" }}
+          />
+        )}
+
+        {/* Rim light */}
         <circle
           cx={size.w / 2}
           cy={size.h / 2}
-          r={radius + 2}
+          r={radius}
           fill="none"
-          stroke="rgba(255,255,255,0.05)"
-          strokeWidth={4}
+          stroke="rgba(100,180,255,0.12)"
+          strokeWidth={1.5}
         />
       </svg>
 
@@ -300,50 +361,31 @@ export default function Globe() {
             className="fixed z-50 pointer-events-none"
             style={{ left: tooltip.x + 16, top: tooltip.y - 10 }}
           >
-            <div className="bg-black/90 backdrop-blur-md text-white px-4 py-3 rounded-xl border border-white/10 shadow-2xl">
-              <div className="text-[10px] text-white/40 tracking-[0.15em] uppercase mb-0.5">
-                {country.code}
-              </div>
+            <div className="bg-black/80 backdrop-blur-md text-white px-3 py-2 rounded-lg border border-white/10 shadow-xl">
+              <div className="text-[10px] text-white/40 tracking-[0.1em] uppercase">{country.code}</div>
               <div className="text-sm font-bold">{country.name}</div>
-              <div className="text-xs text-white/50 mt-0.5">{country.landmark}</div>
+              <div className="text-[11px] text-white/40 mt-0.5">{country.landmark}</div>
             </div>
           </div>
         );
       })()}
 
-      {/* Overlay text */}
-      <div className="absolute top-0 left-0 right-0 pointer-events-none pt-24 px-6 md:px-12 text-center">
-        <motion.p
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="text-white/40 text-xs font-bold tracking-[0.4em] uppercase mb-3"
-        >
+      {/* Subtle title overlay */}
+      <div className="absolute bottom-8 left-0 right-0 pointer-events-none text-center">
+        <p className="text-white/15 text-[10px] font-medium tracking-[0.5em] uppercase mb-1">
           200 Countries &middot; 1000 Leaders &middot; 10 Days
-        </motion.p>
-        <motion.h1
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="text-white text-4xl sm:text-6xl md:text-7xl font-black tracking-tighter"
-        >
-          NEXT
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-neutral-400 to-neutral-600">
-            WORLD
-          </span>
-        </motion.h1>
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.8 }}
-          className="text-white/40 text-sm md:text-base mt-3 max-w-md mx-auto"
-        >
-          Click on any country to discover its delegates
-        </motion.p>
+        </p>
+        <h1 className="text-white/20 text-lg sm:text-xl font-black tracking-tight">
+          NEXT<span className="text-white/10">WORLD</span>
+        </h1>
       </div>
 
-      {/* Bottom gradient */}
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black to-transparent pointer-events-none" />
+      {/* Click hint */}
+      <div className="absolute bottom-8 right-8 pointer-events-none">
+        <p className="text-white/10 text-[10px] tracking-wider">
+          Drag to rotate &middot; Click a country
+        </p>
+      </div>
     </div>
   );
 }
