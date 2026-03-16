@@ -210,7 +210,7 @@ export default function Globe() {
   }
 
   return (
-    <div className="relative h-screen overflow-hidden select-none" style={{ background: "radial-gradient(ellipse at 50% 45%, #0d1f3c 0%, #060e1a 50%, #020408 100%)" }}>
+    <div className="relative h-screen overflow-hidden select-none" style={{ background: "#020810" }}>
       {/* Subtle stars */}
       <div className="absolute inset-0 opacity-40" style={{ backgroundImage: "radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,0.3), transparent), radial-gradient(1px 1px at 70% 20%, rgba(255,255,255,0.2), transparent), radial-gradient(1px 1px at 40% 70%, rgba(255,255,255,0.15), transparent), radial-gradient(1px 1px at 80% 60%, rgba(255,255,255,0.25), transparent), radial-gradient(1px 1px at 10% 80%, rgba(255,255,255,0.1), transparent), radial-gradient(1px 1px at 60% 50%, rgba(255,255,255,0.2), transparent)" }} />
 
@@ -289,17 +289,17 @@ export default function Globe() {
               d={d}
               fill={
                 isHovered
-                  ? "#4a9e6e"
+                  ? "#3b82c8"
                   : isActive
-                    ? "#2d6b47"
-                    : "#1e4a35"
+                    ? "#1e4f80"
+                    : "#15334f"
               }
               stroke={
                 isHovered
-                  ? "rgba(255,255,255,0.6)"
+                  ? "rgba(140,200,255,0.7)"
                   : isActive
-                    ? "rgba(255,255,255,0.2)"
-                    : "rgba(255,255,255,0.08)"
+                    ? "rgba(100,170,255,0.25)"
+                    : "rgba(80,140,220,0.1)"
               }
               strokeWidth={isHovered ? 1.2 : 0.3}
               style={{
