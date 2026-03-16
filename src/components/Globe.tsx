@@ -8,37 +8,119 @@ import { countries } from "@/data/countries";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const GlobeGL = dynamic(() => import("react-globe.gl"), { ssr: false }) as any;
 
-const GEOJSON_URL =
-  "https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson";
+const GEOJSON_URLS = [
+  "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json",
+  "https://unpkg.com/world-atlas@2/countries-50m.json",
+];
 
 interface GeoFeature {
   type: string;
   properties: {
-    ADMIN: string;
-    ISO_A2: string;
-    ISO_A3?: string;
+    name?: string;
+    ADMIN?: string;
+    ISO_A2?: string;
+    iso_a2?: string;
   };
   geometry: object;
 }
 
-interface GeoJSON {
+interface TopoJSON {
   type: string;
-  features: GeoFeature[];
+  objects?: {
+    countries?: {
+      geometries: any[];
+    };
+  };
+  arcs?: any[];
 }
 
 const countryCodeSet = new Set(countries.map((c) => c.code));
 
+const nameToIso: Record<string, string> = {};
+countries.forEach((c) => {
+  nameToIso[c.name.toLowerCase()] = c.code;
+});
+nameToIso["united states of america"] = "US";
+nameToIso["united kingdom"] = "GB";
+nameToIso["korea, republic of"] = "KR";
+nameToIso["russian federation"] = "RU";
+nameToIso["czech republic"] = "CZ";
+nameToIso["viet nam"] = "VN";
+nameToIso["iran, islamic republic of"] = "IR";
+nameToIso["republic of korea"] = "KR";
+nameToIso["s. korea"] = "KR";
+nameToIso["dem. rep. korea"] = "KP";
+nameToIso["saudi arabia"] = "SA";
+nameToIso["south africa"] = "ZA";
+nameToIso["new zealand"] = "NZ";
+nameToIso["united arab emirates"] = "AE";
+nameToIso["u.a.e."] = "AE";
+
+const numericToIso: Record<string, string> = {
+  "250": "FR", "840": "US", "826": "GB", "392": "JP", "076": "BR",
+  "276": "DE", "380": "IT", "156": "CN", "356": "IN", "036": "AU",
+  "643": "RU", "124": "CA", "484": "MX", "818": "EG", "710": "ZA",
+  "410": "KR", "032": "AR", "724": "ES", "682": "SA", "792": "TR",
+  "566": "NG", "404": "KE", "764": "TH", "752": "SE", "756": "CH",
+  "376": "IL", "784": "AE", "702": "SG", "504": "MA", "170": "CO",
+  "604": "PE", "300": "GR", "620": "PT", "616": "PL", "578": "NO",
+  "554": "NZ", "152": "CL", "360": "ID", "608": "PH", "704": "VN",
+};
+
+function getIsoFromFeature(feat: any): string | null {
+  const props = feat.properties || {};
+  const iso = props.ISO_A2 || props.iso_a2;
+  if (iso && iso !== "-99") return iso;
+
+  if (feat.id && numericToIso[feat.id]) return numericToIso[feat.id];
+
+  const name = props.name || props.ADMIN || "";
+  return nameToIso[name.toLowerCase()] || null;
+}
+
 export default function Globe() {
   const router = useRouter();
   const globeRef = useRef<any>(null);
-  const [geoData, setGeoData] = useState<GeoJSON | null>(null);
+  const [geoFeatures, setGeoFeatures] = useState<GeoFeature[] | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
-    fetch(GEOJSON_URL)
-      .then((r) => r.json())
-      .then((data: GeoJSON) => setGeoData(data));
+    let cancelled = false;
+
+    async function loadGeo() {
+      for (const url of GEOJSON_URLS) {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) continue;
+          const data = await res.json();
+
+          if (cancelled) return;
+
+          if (data.type === "Topology" && data.objects) {
+            const topojson = await import("topojson-client");
+            const key = Object.keys(data.objects)[0];
+            const fc = topojson.feature(data, data.objects[key]);
+            if ("features" in fc) {
+              setGeoFeatures(fc.features as GeoFeature[]);
+            }
+            return;
+          }
+
+          if (data.features) {
+            setGeoFeatures(data.features);
+            return;
+          }
+        } catch {
+          continue;
+        }
+      }
+      if (!cancelled) setLoadError(true);
+    }
+
+    loadGeo();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
@@ -50,23 +132,22 @@ export default function Globe() {
   }, []);
 
   useEffect(() => {
-    if (globeRef.current) {
-      const globe = globeRef.current as {
-        controls: () => { autoRotate: boolean; autoRotateSpeed: number; enableZoom: boolean };
-        pointOfView: (pov: { lat: number; lng: number; altitude: number }) => void;
-      };
-      const controls = globe.controls();
-      controls.autoRotate = true;
-      controls.autoRotateSpeed = 0.5;
-      controls.enableZoom = true;
+    if (globeRef.current && geoFeatures) {
+      const globe = globeRef.current;
+      try {
+        const controls = globe.controls();
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 0.5;
+        controls.enableZoom = true;
+      } catch { /* controls not ready yet */ }
       globe.pointOfView({ lat: 20, lng: 10, altitude: 2.2 });
     }
-  }, [geoData]);
+  }, [geoFeatures]);
 
   const handleClick = useCallback(
     (feat: object) => {
       const feature = feat as GeoFeature;
-      const iso = feature.properties?.ISO_A2;
+      const iso = getIsoFromFeature(feature);
       if (iso && countryCodeSet.has(iso)) {
         router.push(`/country/${iso}`);
       }
@@ -77,7 +158,7 @@ export default function Globe() {
   const getColor = useCallback(
     (feat: object) => {
       const feature = feat as GeoFeature;
-      const iso = feature.properties?.ISO_A2;
+      const iso = getIsoFromFeature(feature);
       if (iso === hovered) return "rgba(255,255,255,0.35)";
       if (iso && countryCodeSet.has(iso)) return "rgba(255,255,255,0.15)";
       return "rgba(255,255,255,0.04)";
@@ -88,7 +169,7 @@ export default function Globe() {
   const getSideColor = useCallback(
     (feat: object) => {
       const feature = feat as GeoFeature;
-      const iso = feature.properties?.ISO_A2;
+      const iso = getIsoFromFeature(feature);
       if (iso === hovered) return "rgba(255,255,255,0.2)";
       return "rgba(255,255,255,0.05)";
     },
@@ -98,7 +179,7 @@ export default function Globe() {
   const getStrokeColor = useCallback(
     (feat: object) => {
       const feature = feat as GeoFeature;
-      const iso = feature.properties?.ISO_A2;
+      const iso = getIsoFromFeature(feature);
       if (iso === hovered) return "#ffffff";
       if (iso && countryCodeSet.has(iso)) return "rgba(255,255,255,0.5)";
       return "rgba(255,255,255,0.15)";
@@ -108,7 +189,12 @@ export default function Globe() {
 
   const handleHover = useCallback((feat: object | null) => {
     const feature = feat as GeoFeature | null;
-    const iso = feature?.properties?.ISO_A2 ?? null;
+    if (!feature) {
+      setHovered(null);
+      document.body.style.cursor = "default";
+      return;
+    }
+    const iso = getIsoFromFeature(feature);
     setHovered(iso && countryCodeSet.has(iso) ? iso : null);
     document.body.style.cursor =
       iso && countryCodeSet.has(iso) ? "pointer" : "default";
@@ -116,7 +202,8 @@ export default function Globe() {
 
   const getLabel = useCallback((feat: object) => {
     const feature = feat as GeoFeature;
-    const iso = feature.properties?.ISO_A2;
+    const iso = getIsoFromFeature(feature);
+    if (!iso) return "";
     const country = countries.find((c) => c.code === iso);
     if (!country) return "";
     return `<div style="background:rgba(0,0,0,0.85);color:#fff;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.1)">
@@ -126,7 +213,23 @@ export default function Globe() {
     </div>`;
   }, []);
 
-  if (!geoData) {
+  if (loadError) {
+    return (
+      <div className="h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-white/40 text-sm">Failed to load globe data.</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 text-white text-sm underline"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!geoFeatures) {
     return (
       <div className="h-screen bg-black flex items-center justify-center">
         <div className="text-center">
@@ -149,10 +252,11 @@ export default function Globe() {
         backgroundColor="rgba(0,0,0,0)"
         atmosphereColor="#ffffff"
         atmosphereAltitude={0.15}
-        polygonsData={geoData.features}
+        polygonsData={geoFeatures}
         polygonAltitude={(d: object) => {
           const f = d as GeoFeature;
-          return f.properties?.ISO_A2 === hovered ? 0.04 : 0.01;
+          const iso = getIsoFromFeature(f);
+          return iso === hovered ? 0.04 : 0.01;
         }}
         polygonCapColor={getColor}
         polygonSideColor={getSideColor}
